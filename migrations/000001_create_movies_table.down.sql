@@ -1,0 +1,1 @@
+DROPS TABLE IF EXISTS movies;
