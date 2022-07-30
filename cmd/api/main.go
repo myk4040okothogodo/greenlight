@@ -4,14 +4,12 @@ import (
     "context"
     "database/sql"
     "flag"
-    "fmt"
-    "log"
-    "net/http"
     "os"
     "time"
     //import the pq driver so that it can register itself with the database/sql package. Note that we alias this import to the blank identifier, to stop the Go
     //compiler complaining that the package isnt being used.
     "github.com/myk4040okothogodo/greenlight/internal/data"
+    "github.com/myk4040okothogodo/greenlight/internal/jsonlog"
     _ "github.com/lib/pq"
 )
 
@@ -35,6 +33,14 @@ type config struct {
         maxIdleConns   int
         maxIdleTime    string
     }
+
+    // Add a new limiter struct containing fields for the request-per-second and burst values, and a boolean field which we can use to enable/disable rate limiting 
+    // altogether
+    limiter struct {
+        rps       float64
+        burst     int
+        enabled   bool
+    }
 }
 
 // Define an applicaction struct to hold the dependencies for our HTTP handlers, helpers, and middleware. At the moment this only
@@ -42,7 +48,7 @@ type config struct {
 // Add a models fields to hold our new Models struct
 type application struct {
     config config
-    logger *log.Logger
+    logger *jsonlog.Logger
     models data.Models
 
 }
@@ -65,11 +71,17 @@ func main(){
     flag.IntVar(&cfg.db.maxOpenConns, "db-max-open-conns", 25, "PostgreSQL max open connections")
     flag.IntVar(&cfg.db.maxIdleConns, "db-max-idle-conns", 25, "PostgreSQL max idle connections")
     flag.StringVar(&cfg.db.maxIdleTime, "db-max-idle-time", "15m", "PostgreSQL max connection idle time")
+
+
+    //Create command -line flags to read the setting values into the config struct. Notice that we use true as the default for the "enabled" setting?
+    //
+    flag.Float64Var(&cfg.limiter.rps, "limiter-rps", 2, "Rate limiter maximum requests per second")
+    flag.IntVar(&cfg.limiter.burst, "limiter-burst", 4, "Rate limiter maximum burst")
+    flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
     flag.Parse()
 
-    //Initialize a new logger which writes to the standard out stream
-    //Prefixed with the current date and time
-    logger := log.New(os.Stdout, "", log.Ldate | log.Ltime)
+    //Initialize a new jsonlog.logger which writes any messages *at or above* the INFO severity level to the standard out stream.
+    logger := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
 
 
 
@@ -77,14 +89,16 @@ func main(){
     // immediately
     db, err := openDB(cfg)
     if err != nil {
-        logger.Fatal(err)
+        //Use the PrintFatal() method to write a log entry containing  the error at the FATAL level and exit. we have no additional properties to include in the log
+        //entry, so we pass nil as the second parameter.
+        logger.PrintFatal(err, nil)
     }
 
     //Defer a call to db.close() so that the connection pool is closed before the main() function  exits.
     defer db.Close()
 
     //Also log a message to say that the connection pool has been succesfully established.
-    logger.Printf("database connection pool established")
+    logger.PrintInfo("database connection pool established", nil)
 
     //Declare an instance of the application struct, containing the config struct and the logger .
     app := &application{
@@ -93,24 +107,12 @@ func main(){
         models: data.NewModels(db),
     }
 
-    // Declare a new servemux and add a /v1/healthcheck route which dispatches requests to the healthcheckHandler method
-    // Declare a HTTP server with some sensible timeout settings, which listens om the port provided in the config struct and uses the servemux
-    // we created above as the handler
-    //
-    srv := &http.Server{
-        Addr    :                fmt.Sprintf(":%d", cfg.port),
-        Handler :                app.routes(),
-        IdleTimeout:             time.Minute,
-        ReadTimeout:             10 * time.Second,
-        WriteTimeout:            10 * time.Second,
+    
+    //call app.serve() to start the server
+    err = app.serve()
+    if err != nil {
+        logger.PrintFatal(err, nil)
     }
-
-
-    logger.Printf("Starting %s server on %s ", cfg.env, srv.Addr)
-    // Because the err variable is now already declared in the code above, we need to use the = operator instead of the := operator
-    //
-    err = srv.ListenAndServe()
-    logger.Fatal(err)
 }
 
 

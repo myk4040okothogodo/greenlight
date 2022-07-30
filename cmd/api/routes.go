@@ -6,7 +6,7 @@ import (
 )
 
 
-func (app *application) routes() *httprouter.Router {
+func (app *application) routes() http.Handler  {
     // Initialize a new httprouter router instance
     router :=  httprouter.New()
 
@@ -17,7 +17,7 @@ func (app *application) routes() *httprouter.Router {
     // Register the relevant methods, URL patterns and handler functions for our endpoints using HandlerFunc() method .
     // Note that http.MethodGet and http.MethodPost are constants which equate to the strings "GET" and "POST" respectively
     //Likewise, convert the methodNotAllowedResponse() helper to a http.Handler and set it as 
-    //the  custom error handler for 405 Method Not Allowed responses
+   //the  custom error handler for 405 Method Not Allowed responses
 
     router.MethodNotAllowed = http.HandlerFunc(app.methodNotAllowedResponse)
 
@@ -29,8 +29,10 @@ func (app *application) routes() *httprouter.Router {
     router.HandlerFunc(http.MethodGet,     "/v1/movies/:id",   app.showMovieHandler)
     router.HandlerFunc(http.MethodPatch,   "/v1/movies/:id",   app.updateMovieHandler)
     router.HandlerFunc(http.MethodDelete,  "/v1/movies/:id",   app.deleteMovieHandler)
+
+
     // Return the httprouter instance
-    return router
+    return  app.recoverPanic(app.rateLimit(router))
 }
 
 
