@@ -29,6 +29,11 @@ func (app *application) routes() http.Handler  {
     router.HandlerFunc(http.MethodGet,     "/v1/movies/:id",   app.showMovieHandler)
     router.HandlerFunc(http.MethodPatch,   "/v1/movies/:id",   app.updateMovieHandler)
     router.HandlerFunc(http.MethodDelete,  "/v1/movies/:id",   app.deleteMovieHandler)
+    // Add the route for the POST /v1/users endpoint
+    router.HandlerFunc(http.MethodPost, "/v1/users", app.registerUserHandler)
+    router.HandlerFunc(http.MethodPut, "/v1/users/activated", app.activateUserHandler)
+    // Add the route for rhe POST /v1/tokens/authentication endpoint
+    router.HandlerFunc(http.MethodPost, "/v1/tokens/authentication", app.createAuthenticationTokenHandler)
 
 
     // Return the httprouter instance

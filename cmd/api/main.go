@@ -1,6 +1,7 @@
 package main
 
 import (
+    "sync"
     "context"
     "database/sql"
     "flag"
@@ -10,6 +11,7 @@ import (
     //compiler complaining that the package isnt being used.
     "github.com/myk4040okothogodo/greenlight/internal/data"
     "github.com/myk4040okothogodo/greenlight/internal/jsonlog"
+    "github.com/myk4040okothogodo/greenlight/internal/mailer"
     _ "github.com/lib/pq"
 )
 
@@ -41,6 +43,13 @@ type config struct {
         burst     int
         enabled   bool
     }
+    smtp struct {
+        host      string
+        port      int
+        username  string
+        password  string
+        sender    string
+    }
 }
 
 // Define an applicaction struct to hold the dependencies for our HTTP handlers, helpers, and middleware. At the moment this only
@@ -50,6 +59,8 @@ type application struct {
     config config
     logger *jsonlog.Logger
     models data.Models
+    mailer mailer.Mailer
+    wg     sync.WaitGroup
 
 }
 
@@ -78,6 +89,12 @@ func main(){
     flag.Float64Var(&cfg.limiter.rps, "limiter-rps", 2, "Rate limiter maximum requests per second")
     flag.IntVar(&cfg.limiter.burst, "limiter-burst", 4, "Rate limiter maximum burst")
     flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
+
+    flag.StringVar(&cfg.smtp.host, "smtp-host", "smtp.mailtrap.io", "SMTP host")
+    flag.IntVar(&cfg.smtp.port, "smtp-port", 25, "SMTP port")
+    flag.StringVar(&cfg.smtp.username, "smtp-username", "9172343c191b6f" ,"SMTP username")
+    flag.StringVar(&cfg.smtp.password,"smtp-password", "e94d6f1b9e1213" , "SMTP password")
+    flag.StringVar(&cfg.smtp.sender, "smtp-sender", "Greenlight <no-reply@greenlight>","SMTP sender")
     flag.Parse()
 
     //Initialize a new jsonlog.logger which writes any messages *at or above* the INFO severity level to the standard out stream.
@@ -105,6 +122,7 @@ func main(){
         config: cfg,
         logger: logger,
         models: data.NewModels(db),
+        mailer: mailer.New(cfg.smtp.host, cfg.smtp.port, cfg.smtp.username, cfg.smtp.password, cfg.smtp.sender),
     }
 
     
