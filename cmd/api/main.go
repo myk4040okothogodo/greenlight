@@ -3,10 +3,13 @@ package main
 import (
     "sync"
     "context"
+    "expvar"
     "database/sql"
     "flag"
     "os"
+    "runtime"
     "time"
+    "strings"
     //import the pq driver so that it can register itself with the database/sql package. Note that we alias this import to the blank identifier, to stop the Go
     //compiler complaining that the package isnt being used.
     "github.com/myk4040okothogodo/greenlight/internal/data"
@@ -49,6 +52,10 @@ type config struct {
         username  string
         password  string
         sender    string
+    }
+    // Add a cors struct and trustedOrigins field with the type []string
+    cors struct {
+        trustedOrigins  []string
     }
 }
 
@@ -95,6 +102,15 @@ func main(){
     flag.StringVar(&cfg.smtp.username, "smtp-username", "9172343c191b6f" ,"SMTP username")
     flag.StringVar(&cfg.smtp.password,"smtp-password", "e94d6f1b9e1213" , "SMTP password")
     flag.StringVar(&cfg.smtp.sender, "smtp-sender", "Greenlight <no-reply@greenlight>","SMTP sender")
+
+    // Use the flag.Func() function to process the -cors-trusted-origins command line flag. In this we use the strings.Fields() function to split
+    // the flag value into a slice based on whitespace characters and assign it to our config struct. Importantly, if the -cors-trsusted-origins flag
+    // is not present, contains the empty string , or contains only whitespace, then strings.Fields() will return and empty []string slice
+    //
+    flag.Func("cors-trusted-origins", "Trusted CORS origins (space separated)",  func(val string) error{
+        cfg.cors.trustedOrigins = strings.Fields(val)
+        return nil
+    })
     flag.Parse()
 
     //Initialize a new jsonlog.logger which writes any messages *at or above* the INFO severity level to the standard out stream.
@@ -116,6 +132,24 @@ func main(){
 
     //Also log a message to say that the connection pool has been succesfully established.
     logger.PrintInfo("database connection pool established", nil)
+
+    //Publish a new "version" variable in the expvar handler containing our application version number (currently the constant "1.0.0")
+    expvar.NewString("version").Set(version)
+
+    //Publish the database connection pool statistics
+    expvar.Publish("goroutines", expvar.Func(func() interface{}{
+        return runtime.NumGoroutine()
+    }))
+
+    //Publish the database  connection pool statistics
+    expvar.Publish("database", expvar.Func(func()  interface{}{
+        return db.Stats()
+    }))
+
+    // Publish the current Unix timestamp
+    expvar.Publish("timestamp", expvar.Func(func() interface{}{
+        return time.Now().Unix()
+    }))
 
     //Declare an instance of the application struct, containing the config struct and the logger .
     app := &application{

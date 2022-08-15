@@ -17,7 +17,6 @@ func (app *application) logError(r *http.Request, err error){
     })
 }
 
-
 // The errResponse() method is a generic helper for sending JSON-formatted error
 // messages to the client with a given status code. Note that we are using an interface{}
 // type for the message parameter, rather than jusr a string type, as this gives us more flexibility over values we can include in the response
@@ -34,7 +33,6 @@ func(app *application) errorResponse(w http.ResponseWriter, r *http.Request, sta
         w.WriteHeader(500)
     }
 }
-
 
 // The serverErrorResponse()  method will be used when our aapplication encounters aan unexpected problem at runtime . It logs the detailed error message,
 // then uses the errorResponse() helper to send a 500 internal server error status code and JSON response (containing a generic error message) to client
@@ -53,18 +51,15 @@ func (app *application) notFoundResponse(w http.ResponseWriter, r *http.Request)
 }
 
 
-
 //The methodNotAllowedResponse() method will be used to send a 405 Method Not Allowed status code and JSON response to the client.
 func(app *application) methodNotAllowedResponse(w http.ResponseWriter, r *http.Request){
     message := fmt.Sprintf("the %s method is not supported for this resource", r.Method)
     app.errorResponse(w, r, http.StatusMethodNotAllowed, message)
 }
 
-
 func (app *application) badRequestResponse(w http.ResponseWriter, r *http.Request, err error){
     app.errorResponse(w, r, http.StatusBadRequest, err.Error())
 }
-
 
 //Note that the errors parameter here has the type map[string]string, which is exactly the same as the errors map conained in our Validator type
 func (app *application) failedValidationResponse(w http.ResponseWriter, r *http.Request, errors map[string]string){
@@ -86,5 +81,27 @@ func (app *application) invalidCredentialsResponse(w http.ResponseWriter, r *htt
     app.errorResponse(w, r, http.StatusUnauthorized, message)
 }
 
+func (app *application) invalidAuthenticationTokenResponse(w http.ResponseWriter, r *http.Request){
+    w.Header().Set("WWW-Authenticate", "Bearer")
 
+    message := "invalid or missing authentication token"
+    app.errorResponse(w, r, http.StatusUnauthorized, message)
+}
+
+func (app *application) authenticationRequiredResponse(w http.ResponseWriter, r *http.Request){
+    message  :=  "you must be authenticated to access this resource"
+    app.errorResponse(w, r, http.StatusUnauthorized, message)
+
+}
+
+func (app *application) inactiveAccountResponse(w http.ResponseWriter, r *http.Request){
+    message := "your user account must be activated to access this response "
+    app.errorResponse(w, r, http.StatusForbidden, message)
+
+}
+
+func (app *application) notPermittedResponse(w http.ResponseWriter, r *http.Request) {
+    message := "your user account doesnt have the neccesary permissions to access this resource"
+    app.errorResponse(w, r, http.StatusForbidden, message)
+}
 
