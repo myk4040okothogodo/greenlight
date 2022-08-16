@@ -1,11 +1,10 @@
 package main
 
 import (
-    "flag"
-    "log"
-    "net/http"
+	"flag"
+	"log"
+	"net/http"
 )
-
 
 // Define a string constant containing the HTML for the webpage. This consists of a <h1> header tag, and some javascript
 // which fetches the JSON from our GET /v1/healthcheck endpoint and writes it to inside the <div id="output"></div> element.
@@ -37,16 +36,16 @@ const html = `
   </body>
   </html>`
 
-  func main() {
-    // Make the server address configurable at runtime via a command-line flag.
-    addr := flag.String("addr", ":9000", "Server address")
-    flag.Parse()
+func main() {
+	// Make the server address configurable at runtime via a command-line flag.
+	addr := flag.String("addr", ":9000", "Server address")
+	flag.Parse()
 
-    log.Printf("Starting server on %s", *addr)
+	log.Printf("Starting server on %s", *addr)
 
-    //Start a HTTP server listening on the given address, which responds to all requests with the webpage HTML above
-    err := http.ListenAndServe(*addr, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request){
-        w.Write([]byte(html))
-    }))
-    log.Fatal(err)
-  }
+	//Start a HTTP server listening on the given address, which responds to all requests with the webpage HTML above
+	err := http.ListenAndServe(*addr, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(html))
+	}))
+	log.Fatal(err)
+}

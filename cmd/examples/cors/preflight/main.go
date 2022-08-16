@@ -1,11 +1,10 @@
 package main
 
 import (
-    "flag"
-    "log"
-    "net/http"
+	"flag"
+	"log"
+	"net/http"
 )
-
 
 // Define a string constant containing the HTML for the webpage. This  consists of a <h1> header tag, and some Javascript which
 // calls our POST /v1/tokens/autheentication  endpoint and writes the response body to inside the <div id="output"></div> tag.
@@ -46,15 +45,14 @@ const html = `
 </html>
 `
 
-
 func main() {
-    addr := flag.String("addr", ":9000", "Server address")
-    flag.Parse()
+	addr := flag.String("addr", ":9000", "Server address")
+	flag.Parse()
 
-    log.Printf("starting server on %s", *addr)
+	log.Printf("starting server on %s", *addr)
 
-    err := http.ListenAndServe(*addr, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request){
-       w.Write([]byte(html))
-    }))
-    log.Fatal(err)
+	err := http.ListenAndServe(*addr, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(html))
+	}))
+	log.Fatal(err)
 }
